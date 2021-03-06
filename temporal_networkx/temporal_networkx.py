@@ -72,3 +72,6 @@ class TemporalDiGraph():
         ec = nx.draw_networkx_edges(G, pos, arrows=True, alpha=0.25)
         ax = plt.axis('off')
         plt.show()
+
+
+
