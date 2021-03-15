@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import networkx as nx
+import matplotlib
 import matplotlib.pyplot as plt
 import math
 from datetime import datetime, timedelta
@@ -218,7 +219,35 @@ class TemporalDiGraph():
                 except:
                     return 0.5
         
-        graph_types = ['average','rev2']
+        def draw_graph(G: nx.MultiDiGraph, graph_type: str, title: str):
+            plt.title(title, fontsize=18)
+            pos = nx.spring_layout(G, k=0.25)
+            
+            if graph_type == 'average':
+                node_sizes = [get_node_size(len(G.in_edges(n))) for n in G]
+                node_colours = [get_node_colour(
+                    [x[2]['weight'] for x in G.in_edges(n, data=True)]) for n in G]
+
+            if graph_type == 'rev2':
+                node_sizes = [get_node_size(n[1]['fairness'], rev2=True)
+                            for n in G.nodes(data=True)]
+                node_colours = [get_node_colour(
+                    n[1]['goodness'], rev2=True) for n in G.nodes(data=True)]
+                
+            nc = nx.draw_networkx_nodes(
+                G, pos, nodelist=G.nodes(), node_size=node_sizes, linewidths=1.5,
+                node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.9
+            )
+
+            colorbar_scalarmappable = plt.cm.ScalarMappable(
+                cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-1.0, vmax=1.0))
+            colorbar = plt.colorbar(colorbar_scalarmappable,
+                                    shrink=0.5)
+            colorbar.set_label('Goodness score of nodes')
+            ec = nx.draw_networkx_edges(G, pos, arrows=True, alpha=0.25)
+            ax = plt.axis('off')
+            
+        graph_types = ['average','rev2','compare']
         
         if graph_type is None:
             graph_type = 'average'
@@ -227,7 +256,7 @@ class TemporalDiGraph():
             raise RuntimeError('graph_type must be one of the following: {}'.format(', '.join(graph_types)))
         
         run_REV2 = False
-        if graph_type == 'rev2':
+        if graph_type in ['rev2', 'compare']:
             run_REV2 = True
             
         G = self.get_DiGraph(period, period_end, run_REV2=run_REV2)
@@ -238,26 +267,26 @@ class TemporalDiGraph():
             title = "Bitcoin OTC Marketplace Trust Network - {}".format(str(period))
         else:
             title = "Bitcoin OTC Marketplace Trust Network - {} to {}".format(str(period), str(period_end))
-                
-        plt.figure(figsize=(10, 10))
-        plt.title(title, fontsize=18)
 
-        pos = nx.spring_layout(G, k=0.25)
+        
+        if graph_type != 'compare':
+            plt.figure(figsize=(10, 10))
+            graph_title = title
+            
+            if graph_type == 'average':
+                graph_title = graph_title + '(Average rating)'
+            else:
+                graph_title = graph_title + '(Fairness/Goodness)'
+            
+            draw_graph(G, graph_type, graph_title)
+        else:
+            plt.figure(figsize=(20, 10))
+            plt.subplot(121)
+            draw_graph(G, 'average', title + '(Average rating)')
 
-        if graph_type == 'average':
-            node_sizes = [get_node_size(len(G.in_edges(n))) for n in G]
-            node_colours = [get_node_colour([x[2]['weight'] for x in G.in_edges(n, data=True)]) for n in G]
+            plt.subplot(122)
+            draw_graph(G, 'rev2', title + '(Fairness/Goodness)')
         
-        if graph_type == 'rev2':
-            node_sizes = [get_node_size(n[1]['fairness'], rev2=True) for n in G.nodes(data=True)]
-            node_colours = [get_node_colour(n[1]['goodness'], rev2=True) for n in G.nodes(data=True)]
-        
-        nc = nx.draw_networkx_nodes(
-            G, pos, nodelist=G.nodes(), node_size=node_sizes, linewidths=1.5,
-            node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.9
-        )
-        ec = nx.draw_networkx_edges(G, pos, arrows=True, alpha=0.25)
-        ax = plt.axis('off')
         
         if save_filename is None:
             plt.show()
