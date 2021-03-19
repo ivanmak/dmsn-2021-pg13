@@ -163,7 +163,9 @@ class TemporalDiGraph():
         return self.df.index.to_period('M').unique().to_list()
 
     def draw_network(self, period=None, period_end=None,
-                     graph_type='average', save_filename=None):
+                     graph_type='average', figsize_scale=1.0,
+                     draw_node_labels=False,
+                     save_filename=None):
         '''
         This methods draws a graph representation of the trust network of the given
         period. By default it will display the graph on-screen.
@@ -183,6 +185,8 @@ class TemporalDiGraph():
         period (str): A string of the starting month in the format YYYY-MM to slice the data
         period_end (str): A string in the ending month format YYYY-MM to slice the data
         graph_type (str): Either 'average' or 'rev2', defaults to 'average'
+        figsize_scale (float): Scales the size of the diagram. Default 1.0
+        draw_node_labels (bool): Whether node lables are drawn on the diagram
         save_filename (str): File name to save the graph
         
         Returns:
@@ -219,7 +223,8 @@ class TemporalDiGraph():
                 except:
                     return 0.5
         
-        def draw_graph(G: nx.MultiDiGraph, graph_type: str, title: str):
+        def draw_graph(G: nx.MultiDiGraph, graph_type: str, title: str,
+                       with_labels: bool=False):
             plt.title(title, fontsize=18)
             pos = nx.spring_layout(G, k=0.25)
             
@@ -238,13 +243,30 @@ class TemporalDiGraph():
                 G, pos, nodelist=G.nodes(), node_size=node_sizes, linewidths=1.5,
                 node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.9
             )
+            ec = nx.draw_networkx_edges(G, pos, arrows=True, alpha=0.25)
+            
+            if with_labels:
+                nl = nx.draw_networkx_labels(
+                    G, pos, font_size=10,
+                )
+            
+            # network_graph = nx.draw_networkx(
+            #     G, pos, arrows=True, with_labels=with_labels,  # nodelist=G.nodes(),
+            #     node_size=node_sizes, linewidths=1.5,
+            #     node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.7
+            # )
 
             colorbar_scalarmappable = plt.cm.ScalarMappable(
                 cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-1.0, vmax=1.0))
             colorbar = plt.colorbar(colorbar_scalarmappable,
                                     shrink=0.5)
-            colorbar.set_label('Goodness score of nodes')
-            ec = nx.draw_networkx_edges(G, pos, arrows=True, alpha=0.25)
+            
+            if graph_type == 'average':
+                colorbar_label = 'Average rating received by nodes'
+            else:
+                colorbar_label = 'Goodness score of nodes'
+            colorbar.set_label(colorbar_label)
+            
             ax = plt.axis('off')
             
         graph_types = ['average','rev2','compare']
@@ -262,15 +284,15 @@ class TemporalDiGraph():
         G = self.get_DiGraph(period, period_end, run_REV2=run_REV2)
         
         if period is None and period_end is None:
-            title = "Bitcoin OTC Marketplace Trust Network - Whole Data Set"
+            title = "Bitcoin OTC Marketplace Trust Network\nWhole Data Set"
         elif period is not None and period_end is None:
-            title = "Bitcoin OTC Marketplace Trust Network - {}".format(str(period))
+            title = "Bitcoin OTC Marketplace Trust Network\n{}".format(str(period))
         else:
-            title = "Bitcoin OTC Marketplace Trust Network - {} to {}".format(str(period), str(period_end))
+            title = "Bitcoin OTC Marketplace Trust Network\n{} to {}".format(str(period), str(period_end))
 
         
         if graph_type != 'compare':
-            plt.figure(figsize=(10, 10))
+            plt.figure(figsize=(10 * figsize_scale, 10 * figsize_scale))
             graph_title = title
             
             if graph_type == 'average':
@@ -278,14 +300,17 @@ class TemporalDiGraph():
             else:
                 graph_title = graph_title + '(Fairness/Goodness)'
             
-            draw_graph(G, graph_type, graph_title)
+            draw_graph(G, graph_type, graph_title,
+                       with_labels=draw_node_labels)
         else:
-            plt.figure(figsize=(20, 10))
+            plt.figure(figsize=(20 * figsize_scale, 10 * figsize_scale))
             plt.subplot(121)
-            draw_graph(G, 'average', title + '(Average rating)')
+            draw_graph(G, 'average', title + '(Average rating)',
+                       with_labels=draw_node_labels)
 
             plt.subplot(122)
-            draw_graph(G, 'rev2', title + '(Fairness/Goodness)')
+            draw_graph(G, 'rev2', title + '(Fairness/Goodness)',
+                       with_labels=draw_node_labels)
         
         
         if save_filename is None:
