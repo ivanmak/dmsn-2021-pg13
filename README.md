@@ -9,6 +9,8 @@
 ## Introduction
 This is the GitHub repository for the coursework of ECS757 Digital Media and Social Network of group PG13, in the Spring Semester of 2021.
 
+It makes use of a data set of the ratings among users on Bitcoin OTC marketplace and simulates the effects of banning users based on their goodness scores, calculated by the REV2 algorithm (see below for references), instead of purely based on the ratings they received.
+
 ### Credits
 This coursework makes use of the following works:
 * Bitcoin OTC data set from https://snap.stanford.edu/data/soc-sign-bitcoin-otc.html
@@ -35,5 +37,5 @@ Some notable files:
 * old/: history
 
 ## References
-* S. Kumar, F. Spezzano, V.S. Subrahmanian, C. Faloutsos. Edge Weight Prediction in Weighted Signed Networks. IEEE International Conference on Data Mining (ICDM), 2016.
-* S. Kumar, B. Hooi, D. Makhija, M. Kumar, V.S. Subrahmanian, C. Faloutsos. REV2: Fraudulent User Prediction in Rating Platforms. 11th ACM International Conference on Web Searchand Data Mining (WSDM), 2018.
+* S. Kumar, F. Spezzano, V.S. Subrahmanian, C. Faloutsos. [Edge Weight Prediction in Weighted Signed Networks](http://cs.stanford.edu/~srijan/pubs/wsn-icdm16.pdf). IEEE International Conference on Data Mining (ICDM), 2016.
+* S. Kumar, B. Hooi, D. Makhija, M. Kumar, V.S. Subrahmanian, C. Faloutsos. [REV2: Fraudulent User Prediction in Rating Platforms](http://cs.stanford.edu/~srijan/pubs/rev2-wsdm18.pdf). 11th ACM International Conference on Web Searchand Data Mining (WSDM), 2018.
