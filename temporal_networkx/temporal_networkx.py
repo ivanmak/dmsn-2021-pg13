@@ -153,7 +153,23 @@ class TemporalDiGraph():
         
         return G
     
-    def get_DiGraph(self, period=None, period_end=None, run_REV2=False) -> nx.MultiDiGraph:
+    def calculate_average_ratings(self, G: nx.MultiDiGraph) -> nx.MultiDiGraph:
+        for node in G.nodes():
+            total_rating = 0
+            count_rating = 0
+            
+            for in_edge in G.in_edges(node, data=True):
+                total_rating = total_rating + in_edge[2]['weight']
+                count_rating = count_rating + 1
+                
+            if count_rating > 0:
+                G.nodes[node]['average_rating'] = total_rating / count_rating
+            else:
+                G.nodes[node]['average_rating'] = None
+                
+        return G
+    
+    def get_DiGraph(self, period=None, period_end=None, run_REV2=False, calc_average=False) -> nx.MultiDiGraph:
         '''
         This method creates a NetworkX MultiDiGraph sliced to the given period.
         
@@ -182,7 +198,10 @@ class TemporalDiGraph():
         
         if run_REV2:
             G = self.run_REV2(G, True)
-        
+            
+        if calc_average:
+            G = self.calculate_average_ratings(G)
+
         return G
     
     def get_all_months(self) -> list:

@@ -26,13 +26,13 @@ The coursework is done with Python 3 withe the use of the following libraries:
 
 ## Files
 Some notable files:
-* [bitcoinotc.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/bitcoinotc.ipynb): Basic network visualisations.
+* [bitcoinotc.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/bitcoinotc.ipynb): Basic network visualisations and statistics generated during early stage of the coursework.
 * [temporal_networkx/temporal_networkx.py](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/temporal_networkx/temporal_networkx.py): A custom class that wraps the data set and NetworkX objects, with the functionality to slices the data to given interval, calculates fairness and goodness scores using REV2 algorithm, and draw network visualisation.
 * [temporal_graph.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/temporal_graph.ipynb): Network statistics using the custom class.
 * [fairness_goodness_visualisation.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/fairness_goodness_visualisation.ipynb): Network visualisation using the custom class.
-* [fairness_goodness_analysis.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/fairness_goodness_analysis.ipynb): Simulation of identifying and banning bad users.
+* [simulation.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/simulation.ipynb): Simulation of identifying and banning bad users.
 * [soc-sign-bitcoinotc.csv](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/soc-sign-bitcoinotc.csv): The source data set.
-* *.csv and [user_stats.xlsx](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/user_stats.xlsx): Other network statistics derived from the data set.
+* *.csv and *.xlsx: Other network statistics derived from the data set, generated from the Jupyter Notebooks.
 * graphs/: output directory of graphs
 * old/ : history
 
