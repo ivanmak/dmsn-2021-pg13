@@ -275,9 +275,11 @@ class TemporalDiGraph():
                     return 0.5
         
         def draw_graph(G: nx.MultiDiGraph, graph_type: str, title: str,
-                       with_labels: bool=False):
+                       with_labels: bool=False, pos: dict=None) -> dict:
             plt.title(title, fontsize=18)
-            pos = nx.spring_layout(G, k=0.25)
+            
+            if pos is None:
+                pos = nx.spring_layout(G, k=0.25)
             
             if graph_type == 'average':
                 node_sizes = [get_node_size(len(G.in_edges(n))) for n in G]
@@ -306,19 +308,24 @@ class TemporalDiGraph():
             #     node_size=node_sizes, linewidths=1.5,
             #     node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.7
             # )
-
-            colorbar_scalarmappable = plt.cm.ScalarMappable(
-                cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-1.0, vmax=1.0))
-            colorbar = plt.colorbar(colorbar_scalarmappable,
-                                    shrink=0.5)
+            colorbar_scale = 1.0
             
             if graph_type == 'average':
                 colorbar_label = 'Average rating received by nodes'
+                colorbar_scale = colorbar_scale * 10
             else:
                 colorbar_label = 'Goodness score of nodes'
+                
+            colorbar_scalarmappable = plt.cm.ScalarMappable(
+                cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-colorbar_scale,
+                                                       vmax=colorbar_scale))
+            colorbar = plt.colorbar(colorbar_scalarmappable,
+                                    shrink=0.5)
             colorbar.set_label(colorbar_label)
             
             ax = plt.axis('off')
+            
+            return pos
             
         graph_types = ['average','rev2','compare']
         
@@ -339,7 +346,7 @@ class TemporalDiGraph():
         elif period is not None and period_end is None:
             title = "Bitcoin OTC Marketplace Trust Network\n{}".format(str(period))
         else:
-            title = "Bitcoin OTC Marketplace Trust Network{} to {}".format(str(period), str(period_end))
+            title = "Bitcoin OTC Marketplace Trust Network\n{} to {}".format(str(period), str(period_end))
 
         
         if graph_type != 'compare':
@@ -356,12 +363,12 @@ class TemporalDiGraph():
         else:
             plt.figure(figsize=(20 * figsize_scale, 10 * figsize_scale))
             plt.subplot(121)
-            draw_graph(G, 'average', title + '(Average rating)',
+            pos = draw_graph(G, 'average', title + '(Average rating)',
                        with_labels=draw_node_labels)
 
             plt.subplot(122)
             draw_graph(G, 'rev2', title + '(Fairness/Goodness)',
-                       with_labels=draw_node_labels)
+                       with_labels=draw_node_labels, pos=pos)
         
         
         if save_filename is None:
