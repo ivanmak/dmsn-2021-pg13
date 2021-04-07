@@ -5,46 +5,129 @@ import matplotlib
 import matplotlib.pyplot as plt
 import math
 from datetime import datetime, timedelta
+from copy import deepcopy
 
-# Includes REV2 algorithm from https://github.com/horizonly/Rev2-model
-# @inproceedings{kumar2018rev2, title={Rev2: Fraudulent user prediction in rating platforms},
-# author={Kumar, Srijan and Hooi, Bryan and Makhija, Disha and Kumar, Mohit and Faloutsos, Christos and Subrahmanian, VS},
-# booktitle={Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining},
-# pages={333--341}, year={2018}, 321、 organization={ACM} }
+
 
 class TemporalDiGraph():
+    '''
+    Class to process the dataset of the trust network on BitcoinOTC marketplace.
+    
+    Includes REV2 algorithm from https://github.com/horizonly/Rev2-model
+    @inproceedings{kumar2018rev2, title={Rev2: Fraudulent user prediction in rating platforms},
+    author={Kumar, Srijan and Hooi, Bryan and Makhija, Disha and Kumar, Mohit and Faloutsos, Christos and Subrahmanian, VS},
+    booktitle={Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining},
+    pages={333--341}, year={2018}, 321、 organization={ACM} }
+    ...
+    Attributes
+    ----------
+    df : pandas.DataFrame
+        (Read-only) A DataFrame created from the dataset.
+        
+    simulation : pandas.DataFrame
+        (Read-only) A duplicate of the DataFrame df. Used during simulation.
+    
+    baseline_graph : networkx.MultiDiGraph
+        (Read-only) A directed graph created from the dataset. Used as baseline
+        during simulation.
+        
+    Methods
+    -------
+    
+    '''
+    
+    # Private objects storing the network
+    __df = None
+    __simulation_df = None
+    __baseline_graph = None
+    
+    @property
+    def df(self):
+        return self.__df
+    
+    @property
+    def simulation_df(self):
+        return self.__simulation_df
+    
+    @property
+    def baseline_graph(self):
+        return self.__baseline_graph
     
     def __init__(self, df):
         '''
         This class takes the Pandas data frame created by the 
         read_csv() method with the option header=None.
         
-        Parameters:
-        df (pandas.DataFrame): A Pandas Data Frame containing the Bitcoin OTC data set
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            A Pandas Data Frame containing the Bitcoin OTC data set
+            
+        Returns
+        -------
+        None
         '''
-        df.columns = ['source', 'target', 'rating', 'time']
-        df['time'] = pd.to_datetime(df['time'].astype(int), unit='s')
-        df = df.set_index('time')
-        self.df = df
+        self.__df = deepcopy(df)
+        self.__df.columns = ['source', 'target', 'rating', 'time']
+        self.__df['time'] = pd.to_datetime(self.__df['time'].astype(int), unit='s')
+        self.__df = self.__df.set_index('time')
+        self.__simulation_df = deepcopy(self.__df)
+        self.__baseline_graph = deepcopy(self.get_DiGraph(run_REV2=True,
+                                                    calc_average=True,
+                                                    use_simulation_data=False))
+        
 
     def get_df(self, period=None, period_end=None) -> pd.DataFrame:
         '''
         This method slices the data frame to the given period.
         
-        Parameters:
-        period (str): A string of the starting month in the format YYYY-MM to slice the data frame
-        period_end (str): A string in the ending month format YYYY-MM to slice the data frame
+        Parameters
+        ----------
+        period : str
+            A string of the starting month in the format YYYY-MM to slice the data frame
+        period_end : str
+            A string in the ending month format YYYY-MM to slice the data frame
         
-        Returns:
+        Returns
+        -------
         pandas.DataFrame: The sliced data frame
         '''
         if period is None:
-            return self.df
+            return self.__df
         
         if period is not None and period_end is None:
-            return self.df.loc[period]
+            return self.__df.loc[period]
 
-        return self.df.loc[period:period_end]
+        return self.__df.loc[period:period_end]
+    
+    def get_simulation_df(self, period=None, period_end=None) -> pd.DataFrame:
+        '''
+        This method slices the simulation data frame to the given period.
+        
+        The simulation data frame might or might not be identical to the original
+        data frame, depending on whether simulation has been run.
+        
+        Parameters
+        ----------
+        period : str
+            A string of the starting month in the format YYYY-MM to slice the data frame
+        period_end : str
+            A string in the ending month format YYYY-MM to slice the data frame
+        
+        Returns
+        -------
+        pandas.DataFrame: The sliced data frame
+        '''
+        if self.__simulation_df is None:
+            self.__simulation_df = deepcopy(self.__df)
+        
+        if period is None:
+            return self.__simulation_df
+
+        if period is not None and period_end is None:
+            return self.__simulation_df.loc[period]
+
+        return self.__simulation_df.loc[period:period_end]
     
     def run_REV2(self, G: nx.MultiDiGraph, init_scores: bool=True) -> nx.MultiDiGraph:
         '''
@@ -56,13 +139,17 @@ class TemporalDiGraph():
         If init_scores is set to True, it will reset all fairness and 
         goodness score to zero first.
         
-        Parameters:
-        G (nx.MultiDiGraph): A MultiDiGraph generated by this class
-        init_scores (bool): Whether the scores should be reset to zero,
-            defaults to zero
+        Parameters
+        ----------
+        G :nx.MultiDiGraph
+            A MultiDiGraph generated by this class
+        init_scores : bool
+            Whether the scores should be reset to zero, defaults to zero
         
-        Returns:
-        nx.MultiDiGraph: A MultiDiGraph with the updated scores
+        Returns
+        -------
+        nx.MultiDiGraph
+            A MultiDiGraph with the updated scores
         '''
         if init_scores:
             for node in G.nodes:
@@ -154,6 +241,20 @@ class TemporalDiGraph():
         return G
     
     def calculate_average_ratings(self, G: nx.MultiDiGraph) -> nx.MultiDiGraph:
+        '''
+        This method calculates the average ratings of each node in directed graph G,
+        and store the average rating as node attribute average_rating.
+        
+        Parameters
+        ----------
+        G : networkx.MultiDiGraph
+            Directed graph generated by this class
+            
+        Returns
+        -------
+        networkx.MultiDiGraph
+            Directed graph with average rating calculated
+        '''
         for node in G.nodes():
             total_rating = 0
             count_rating = 0
@@ -169,22 +270,36 @@ class TemporalDiGraph():
                 
         return G
     
-    def get_DiGraph(self, period=None, period_end=None, run_REV2=False, calc_average=False) -> nx.MultiDiGraph:
+    def get_DiGraph(self,
+                    period: str=None,
+                    period_end: str=None,
+                    run_REV2: bool=False,
+                    calc_average: bool=False,
+                    use_simulation_data: bool=False) -> nx.MultiDiGraph:
         '''
         This method creates a NetworkX MultiDiGraph sliced to the given period.
         
         If run_REV2 is set to True, it will calculate node fairness, node goodness,
         and edge fairness using REV2 algorithm.
         
-        Parameters:
-        period (str): A string of the starting month in the format YYYY-MM to slice the data
-        period_end (str): A string in the ending month format YYYY-MM to slice the data
-        run_REV2 (boolean): Whether the fairness and goodness scores should be calculated
+        Parameters
+        ----------
+        period : str
+            A string of the starting month in the format YYYY-MM to slice the data
+        period_end : str
+            A string in the ending month format YYYY-MM to slice the data
+        run_REV2 : bool
+            Whether the fairness and goodness scores should be calculated
         
-        Returns:
-        networkx.MultiDiGraph: A directed graph representing the given period.
+        Returns
+        -------
+        networkx.MultiDiGraph
+            A directed graph representing the given period.
         '''
-        this_df = self.get_df(period, period_end)
+        if use_simulation_data:
+            this_df = self.get_simulation_df(period, period_end)
+        else:
+            this_df = self.get_df(period, period_end)
         
         G = nx.MultiDiGraph()
         edges = [(t.source, t.target, G.new_edge_key(t.source, t.target),
@@ -208,10 +323,16 @@ class TemporalDiGraph():
         '''
         This method returns a list of months that are covered by the data set
         
-        Returns:
-        list: A list of months that are covered by the data set.
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        list
+            A list of months that are covered by the data set.
         '''
-        return self.df.index.to_period('M').unique().to_list()
+        return self.__df.index.to_period('M').unique().to_list()
 
     def draw_network(self, period=None, period_end=None,
                      graph_type='average', figsize_scale=1.0,
@@ -232,15 +353,23 @@ class TemporalDiGraph():
         score of the nodes, and the node colour will be relative to the REV2 goodness score
         of the nodes on a Red-Amber-Green scale.
         
-        Parameters:
-        period (str): A string of the starting month in the format YYYY-MM to slice the data
-        period_end (str): A string in the ending month format YYYY-MM to slice the data
-        graph_type (str): Either 'average' or 'rev2', defaults to 'average'
-        figsize_scale (float): Scales the size of the diagram. Default 1.0
-        draw_node_labels (bool): Whether node lables are drawn on the diagram
-        save_filename (str): File name to save the graph
+        Parameters
+        ----------
+        period : str
+            A string of the starting month in the format YYYY-MM to slice the data
+        period_end : str
+            A string in the ending month format YYYY-MM to slice the data
+        graph_type : str
+            Either 'average' or 'rev2', defaults to 'average'
+        figsize_scale : float
+            Scales the size of the diagram. Default 1.0
+        draw_node_labels : bool
+            Whether node lables are drawn on the diagram
+        save_filename : str
+            File name to save the graph
         
-        Returns:
+        Returns
+        -------
         None - It will either display or save the graph.
         '''
         def get_node_size(input=0, rev2=False):
@@ -302,12 +431,7 @@ class TemporalDiGraph():
                 nl = nx.draw_networkx_labels(
                     G, pos, font_size=10,
                 )
-            
-            # network_graph = nx.draw_networkx(
-            #     G, pos, arrows=True, with_labels=with_labels,  # nodelist=G.nodes(),
-            #     node_size=node_sizes, linewidths=1.5,
-            #     node_color=node_colours, cmap=plt.cm.RdYlGn, alpha=0.7
-            # )
+ 
             colorbar_scale = 1.0
             
             if graph_type == 'average':
@@ -376,4 +500,372 @@ class TemporalDiGraph():
         else:
             plt.savefig(save_filename, facecolor='white', transparent=False)
 
+    def ban_user(self, user_to_be_banned: int,
+                 ban_month: str,
+                 rating_threshold: float = 0.0,
+                 fairness_threshold: float = 0.0,
+                 verbose: bool = False) -> dict:
+        '''
+        This method simulates the effect of banning an user by extracting the
+        in-edges and the out-edges of the users that would have been prevented
+        after the user is banned.
+        
+        This method is a verbose simulation only. To run simulation that modifies
+        the simulation dataframe, run simulation() method instead.
+        
+        Parameters
+        ----------
+        user_to_be_banned : int
+            Node ID of the user being banned
+        ban_month : str
+            Month in YYYY-MM format of when the user is flagged.
+            The ban is effective from the next month.
+        rating_threshold : float
+            Any rating below this threshold would be considered as a bad rating.
+        fairness_threshold : float
+            Any edge with fairness score below this threshold would be considered
+            as an unfair rating.
+        verbose : bool
+            Whether this 
+            
+        Returns
+        -------
+        dict
+            Summary of the effects of banning the user
+        '''
+        if self.__simulation_df is None:
+            self.__simulation_df = deepcopy(self.__df)
+        
+        future_of_the_user = {
+            'node_id': user_to_be_banned,
+            'final_goodness': self.__baseline_graph.nodes[user_to_be_banned]['goodness'],
+            'final_average_rating': self.__baseline_graph.nodes[user_to_be_banned]['average_rating'],
+            'future_in_edges': [],
+            'future_out_edges': [],
+            'bad_in_edges': 0,
+            'good_in_edges': 0,
+            'fair_bad_in_edges': 0,
+            'fair_good_in_edges': 0,
+            'bias_bad_in_edges': 0,
+            'bias_good_in_edges': 0,
+            'bad_out_edges': 0,
+            'good_out_edges': 0,
+            'fair_bad_out_edges': 0,
+            'fair_good_out_edges': 0,
+            'bias_bad_out_edges': 0,
+            'bias_good_out_edges': 0
+        }
 
+        # Find out all edges of this user AFTER ban_month
+        # (simulating users being banned at the end of each month)
+        ban_month_dt = datetime.strptime(ban_month, '%Y-%m')
+        ban_month_dt = ban_month_dt.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0)
+        next_month_dt = ban_month_dt + timedelta(days=31)
+        next_month_dt = ban_month_dt.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Find out all in-edges of the user in this month
+        for edge in self.__baseline_graph.in_edges(user_to_be_banned, data=True):
+            if edge[2]['time'] >= next_month_dt:
+                if edge[2]['weight'] < rating_threshold:
+                    future_of_the_user['bad_in_edges'] = future_of_the_user['bad_in_edges'] + 1
+
+                    if edge[2]['fairness'] < fairness_threshold:
+                        future_of_the_user['bias_bad_in_edges'] = future_of_the_user['bias_bad_in_edges'] + 1
+                    else:
+                        future_of_the_user['fair_bad_in_edges'] = future_of_the_user['fair_bad_in_edges'] + 1
+                else:
+                    future_of_the_user['good_in_edges'] = future_of_the_user['good_in_edges'] + 1
+
+                    if edge[2]['fairness'] < fairness_threshold:
+                        future_of_the_user['bias_good_in_edges'] = future_of_the_user['bias_good_in_edges'] + 1
+                    else:
+                        future_of_the_user['fair_good_in_edges'] = future_of_the_user['fair_good_in_edges'] + 1
+
+                edge_item = {
+                    'weight': edge[2]['weight'],
+                    'fairness': edge[2]['fairness']
+                }
+                future_of_the_user['future_in_edges'].append(edge_item)
+
+        for edge in self.__baseline_graph.out_edges(user_to_be_banned, data=True):
+            if edge[2]['time'] >= next_month_dt:
+                if edge[2]['weight'] < rating_threshold:
+                    future_of_the_user['bad_out_edges'] = future_of_the_user['bad_out_edges'] + 1
+
+                    if edge[2]['fairness'] < fairness_threshold:
+                        future_of_the_user['bias_bad_out_edges'] = future_of_the_user['bias_bad_out_edges'] + 1
+                    else:
+                        future_of_the_user['fair_bad_out_edges'] = future_of_the_user['fair_bad_out_edges'] + 1
+                else:
+                    future_of_the_user['good_out_edges'] = future_of_the_user['good_out_edges'] + 1
+
+                    if edge[2]['fairness'] < fairness_threshold:
+                        future_of_the_user['bias_good_out_edges'] = future_of_the_user['bias_good_out_edges'] + 1
+                    else:
+                        future_of_the_user['fair_good_out_edges'] = future_of_the_user['fair_good_out_edges'] + 1
+
+                edge_item = {
+                    'weight': edge[2]['weight'],
+                    'fairness': edge[2]['fairness']
+                }
+                future_of_the_user['future_out_edges'].append(edge_item)
+
+        if verbose:
+            print(f"At end of the baseline dataset, the {user_to_be_banned} had a final average rating of {future_of_the_user['final_average_rating']}, and final goodness score of {future_of_the_user['final_goodness']}.")
+
+            print(f"Banning the user would have prevent {future_of_the_user['bad_in_edges']} bad in-edges ({future_of_the_user['fair_bad_in_edges']} fair, {future_of_the_user['bias_bad_in_edges']} biased) and {future_of_the_user['good_in_edges']} good in-edges ({future_of_the_user['fair_good_in_edges']} fair, {future_of_the_user['bias_good_in_edges']} biased),")
+
+            print(f"and {future_of_the_user['bad_out_edges']} bad out-edges ({future_of_the_user['fair_bad_out_edges']} fair, {future_of_the_user['bias_bad_out_edges']} biased) and {future_of_the_user['good_out_edges']} good out-edges ({future_of_the_user['fair_good_out_edges']} fair, {future_of_the_user['bias_good_out_edges']} biased).")
+
+        return future_of_the_user
+
+    def simulation(self, criterion: str,
+                   threshold: float,
+                   verbose: bool, 
+                   verbose_ban_user: bool = False) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        '''
+        This method runs a simulation of identifying bad users from the dataset,
+        and the effects of banning the users being flagged.
+        
+        The metric used for flagging users can be either average ratings received
+        by the users, or the goodness score of the users generated by the REV2
+        algorithm.
+        
+        Parameters
+        ----------
+        criterion : str
+            Specifies which metric to use when identifying bad users.
+            Can be one of ['goodness', 'average', 'average_rating'], where 'goodness'
+            indicates using REV2 goodness score, or either 'average' or 'average_rating'
+            for using average rating.
+        threshold : float
+            User with goodness score or average rating below this threshold would be
+            picked as bad user.
+        verbose : bool
+            Whether this method should run verbosely
+        verbose_ban_user : bool
+            Whether ban_user() should run verbosely
+        
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe containing the node ID, month identified, final goodness and
+            final average rating of the users being flagged in simulation.
+        pandas.DataFrame
+            A dataframe containing the future in-edges of the users being banned in the
+            simulation. These in-edges have timestamp later than the month when the users
+            are identified.
+        pandas.DataFrame
+            A dataframe containing the future out-edges of the users being banned in the
+            simulation. These out-edges have timestamp later than the month when the users
+            are identified.
+        '''
+        if criterion not in ['goodness', 'average', 'average_rating']:
+            raise RuntimeError(
+                "criterion should be either 'goodness' or 'average', 'average_rating'")
+
+        run_REV2 = False
+        calc_avg = False
+
+        if criterion == 'goodness':
+            run_REV2 = True
+
+        if criterion == 'average' or criterion == 'average_rating':
+            calc_avg = True
+            criterion = 'average_rating'
+
+        sep = '---------------------------------------------------------------------------'
+
+        # a list storing banned users in form of tuples:
+        #   (month, user_id, final_goodness, final_average_rating)
+        users_banned = []
+
+        # a list storing removed in-edges in form of tuples
+        #   (month, rating, fairness)
+        in_edges_removed = []
+
+        # a list storing removed out-edges in form of tuples
+        #   (month, rating, fairness)
+        out_edges_removed = []
+
+        if verbose:
+            print(
+                f'Running simulation of banning users based on {criterion} with threshold of {threshold}')
+            print(sep)
+
+        self.__simulation_df = deepcopy(self.__df)
+        first_month = str(self.get_all_months()[0])
+        
+        # Loop thru all rolling months
+        for month in self.get_all_months():
+            month = str(month)
+
+            if verbose:
+                print(f'Simulating for the month {month}')
+
+            #simulation_graph = deepcopy(temporal_graph)
+
+            # Remove users that were already banned from simulation_graph
+            months_banned = set([rec[0] for rec in users_banned])
+            for k in months_banned:
+                if k < month:
+                    # Only drop the in-edges from the current month
+                    banned_users = [-1, -2] + [rec[1]
+                                            for rec in users_banned if rec[0] == k]
+                    self.__simulation_df = self.__simulation_df.drop(
+                        self.__simulation_df[self.__simulation_df.index > k]
+                        .query(f"target in ({','.join([str(x) for x in banned_users])})").index
+                    )
+                    self.__simulation_df = self.__simulation_df.drop(
+                        self.__simulation_df[self.__simulation_df.index > k]
+                        .query(f"source in ({','.join([str(x) for x in banned_users])})").index
+                    )
+            G = self.get_DiGraph(
+                first_month, month, run_REV2=run_REV2, calc_average=calc_avg, use_simulation_data=True)
+            # Find out bad users
+            bad_users = [node[0] for node in G.nodes(
+                data=True) if node[1][criterion] is not None and node[1][criterion] < threshold]
+
+            for k in months_banned:
+                if k < month:
+                    users_banned_this_month = [rec[1]
+                                            for rec in users_banned if rec[0] == k]
+                    if len(users_banned_this_month) > 0:
+                        bad_users = [
+                            b for b in bad_users if b not in users_banned_this_month]
+
+            if verbose:
+                print('Effects of banning users in this month:')
+                print(f"{len(bad_users)} bad user(s) were banned")
+
+            future_changed = False
+            for bad_user in bad_users:
+                future_changed = True
+                results = self.ban_user(bad_user, month, 0, 0, verbose_ban_user)
+
+                # added record to user_banned (month, user_id, final_goodness, final_average_rating)
+                item = (month, results['node_id'], results['final_goodness'],
+                        results['final_average_rating'])
+                users_banned.append(item)
+
+                # add records to in_edges_removed (month, rating, fairness)
+                for in_edge in results['future_in_edges']:
+                    item = (month, in_edge['weight'], in_edge['fairness'])
+                    in_edges_removed.append(item)
+
+                # add records to out_edges_removed (month, rating, fairness)
+                for out_edge in results['future_out_edges']:
+                    item = (month, out_edge['weight'], out_edge['fairness'])
+                    out_edges_removed.append(item)
+
+            if verbose:
+                if future_changed:
+                    this_month_bad_users = 0
+                    this_month_good_users = 0
+                    if criterion == 'goodness':
+                        this_month_bad_users = [
+                            1 for rec in users_banned if rec[0] == month and rec[2] < threshold]
+                        this_month_good_users = [
+                            1 for rec in users_banned if rec[0] == month and rec[2] >= threshold]
+                    else:
+                        this_month_bad_users = [
+                            1 for rec in users_banned if rec[0] == month and rec[3] < threshold]
+                        this_month_good_users = [
+                            1 for rec in users_banned if rec[0] == month and rec[3] >= threshold]
+
+                    this_month_bad_users = len(this_month_bad_users)
+                    this_month_good_users = len(this_month_good_users)
+
+                    print('Final scores/ratings of banned users in this month:')
+                    print(
+                        f'{this_month_bad_users} users would have had final {criterion} < {threshold}')
+                    print(
+                        f'{this_month_good_users} users would have had final {criterion} >= {threshold}')
+
+                    num_in_edges = len(
+                        [1 for rec in in_edges_removed if rec[0] == month])
+                    num_bad_in_edges = len(
+                        [1 for rec in in_edges_removed if rec[0] == month and rec[1] < 0])
+                    num_good_in_edges = len(
+                        [1 for rec in in_edges_removed if rec[0] == month and rec[1] > 0])
+
+                    print('\n')
+                    print(f'{num_in_edges} in-edge(s) would have been prevented:')
+                    print(
+                        f'{num_bad_in_edges} bad rating(s), {num_good_in_edges} good rating(s)')
+
+                    num_out_edges = len(
+                        [1 for rec in out_edges_removed if rec[0] == month])
+                    num_bad_out_edges = len(
+                        [1 for rec in out_edges_removed if rec[0] == month and rec[1] < 0])
+                    num_good_out_edges = len(
+                        [1 for rec in out_edges_removed if rec[0] == month and rec[1] > 0])
+
+                    print('\n')
+                    print(f'{num_out_edges} out-edge(s) would have been prevented:')
+                    print(
+                        f'{num_bad_out_edges} bad rating(s), {num_good_out_edges} good rating(s)')
+                else:
+                    print('Simulation of this month would not have affected the future')
+                print(sep)
+
+        if verbose:
+            print('Final simulation results:')
+            num_bad_users = 0
+            num_good_users = 0
+            if criterion == 'goodness':
+                num_bad_users = [1 for rec in users_banned if rec[2] < threshold]
+                num_good_users = [1 for rec in users_banned if rec[2] >= threshold]
+            else:
+                num_bad_users = [1 for rec in users_banned if rec[3] < threshold]
+                num_good_users = [1 for rec in users_banned if rec[3] >= threshold]
+
+            num_bad_users = len(num_bad_users)
+            num_good_users = len(num_good_users)
+
+            print('Final scores/ratings of banned users:')
+            print(f'{num_bad_users} users would have had final {criterion} < {threshold}')
+            print(f'{num_good_users} users would have had final {criterion} >= {threshold}')
+
+            num_in_edges = len(in_edges_removed)
+            num_bad_in_edges = len([1 for rec in in_edges_removed if rec[1] < 0])
+            num_good_in_edges = len([1 for rec in in_edges_removed if rec[1] > 0])
+
+            print('\n')
+            print(f'{num_in_edges} in-edge(s) would have been prevented:')
+            print(f'{num_bad_in_edges} bad rating(s), {num_good_in_edges} good rating(s)')
+
+            num_out_edges = len(out_edges_removed)
+            num_bad_out_edges = len([1 for rec in out_edges_removed if rec[1] < 0])
+            num_fair_bad_out_edges = len(
+                [1 for rec in out_edges_removed if rec[1] < 0 and rec[2] >= 0])
+            num_bias_bad_out_edges = len(
+                [1 for rec in out_edges_removed if rec[1] < 0 and rec[2] < 0])
+            num_good_out_edges = len(
+                [1 for rec in out_edges_removed if rec[1] > 0])
+            num_fair_good_out_edges = len(
+                [1 for rec in out_edges_removed if rec[1] > 0 and rec[2] >= 0])
+            num_bias_good_out_edges = len(
+                [1 for rec in out_edges_removed if rec[1] > 0 and rec[2] < 0])
+
+            print('\n')
+            print(f'{num_out_edges} out-edge(s) would have been prevented:')
+            print(f'{num_bad_out_edges} bad rating(s), {num_good_out_edges} good rating(s)')
+
+        users_banned_df = pd.DataFrame.from_records(
+            users_banned,
+            columns=['month', 'node_id', 'final_goodness', 'final_average_rating'])
+
+        in_edges_removed_df = pd.DataFrame.from_records(
+            in_edges_removed,
+            columns=['month', 'rating', 'fairness']
+        )
+
+        out_edges_removed_df = pd.DataFrame.from_records(
+            out_edges_removed,
+            columns=['month', 'rating', 'fairness']
+        )
+
+        return users_banned_df, in_edges_removed_df, out_edges_removed_df
