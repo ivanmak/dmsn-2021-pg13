@@ -16,14 +16,6 @@ This coursework makes use of the following works:
 * Bitcoin OTC data set from https://snap.stanford.edu/data/soc-sign-bitcoin-otc.html
 * REV2 algorithm from https://github.com/horizonly/Rev2-model (This coursework has modified the code so that it runs smoothly on Python 3)
 
-## Technologies
-The coursework is done with Python 3 withe the use of the following libraries:
-* Pandas
-* NumPy
-* NetworkX
-* Matplotlib
-* Seaborn
-
 ## Files
 Some notable files:
 * [bitcoinotc.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/bitcoinotc.ipynb): Basic network visualisations and statistics generated during early stage of the coursework.
@@ -39,5 +31,14 @@ Some notable files:
 * old/ : history
 
 ## References
+### Papers
 * S. Kumar, F. Spezzano, V.S. Subrahmanian, C. Faloutsos. [Edge Weight Prediction in Weighted Signed Networks](http://cs.stanford.edu/~srijan/pubs/wsn-icdm16.pdf). IEEE International Conference on Data Mining (ICDM), 2016.
 * S. Kumar, B. Hooi, D. Makhija, M. Kumar, V.S. Subrahmanian, C. Faloutsos. [REV2: Fraudulent User Prediction in Rating Platforms](http://cs.stanford.edu/~srijan/pubs/rev2-wsdm18.pdf). 11th ACM International Conference on Web Searchand Data Mining (WSDM), 2018.
+
+### Python libraries
+The coursework is done with Python 3 withe the use of the following libraries:
+* Pandas
+* NumPy
+* NetworkX
+* Matplotlib
+* Seaborn
