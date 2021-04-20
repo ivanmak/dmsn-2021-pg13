@@ -31,7 +31,9 @@ Some notable files:
 * [temporal_graph.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/temporal_graph.ipynb): Network statistics using the custom class.
 * [fairness_goodness_visualisation.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/fairness_goodness_visualisation.ipynb): Network visualisation using the custom class.
 * [simulation.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/simulation.ipynb): Simulation of identifying and banning bad users.
+* [simulation_plots.ipynb](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/simulation_plots.ipynb): Some plots of the simulation results in a separate notebook.
 * [soc-sign-bitcoinotc.csv](https://github.com/ivanmak/dmsn-2021-pg13/blob/main/soc-sign-bitcoinotc.csv): The source data set.
+* *.gpickle: The pickled MultiDiGraph objects for graph drawing without re-running the algorithms.
 * *.csv and *.xlsx: Other network statistics derived from the data set, generated from the Jupyter Notebooks.
 * graphs/: output directory of graphs
 * old/ : history
